@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: andreistefanciprian/priorityclass-webhook
+  repository: andreistefanciprian/k8s-priorityclass-webhook
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""

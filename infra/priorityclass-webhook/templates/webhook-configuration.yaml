@@ -27,4 +27,5 @@ webhooks:
         apiGroups: ["apps"]
         apiVersions: ["v1"]
         resources: ["deployments"]
+        scope: "Namespaced"
     failurePolicy: Ignore # Fail means that the API request will fail if the webhook fails. Ignore means that the API request will succeed even if the webhook fails.

@@ -1,5 +1,5 @@
 DOCKER_HUB_USERNAME := andreistefanciprian
-IMAGE_NAME := priorityclass-webhook
+IMAGE_NAME := k8s-priorityclass-webhook
 DOCKER_IMAGE_NAME := $(DOCKER_HUB_USERNAME)/$(IMAGE_NAME)
 
 build:
@@ -14,15 +14,15 @@ install:
 	helm upgrade --namespace priorityclass-webhook --install priorityclass-webhook infra/priorityclass-webhook --create-namespace
 
 uninstall:
-	helm uninstall priorityclass-webhook --namespace default
+	helm uninstall priorityclass-webhook --namespace priorityclass-webhook
 
 test:
-	kubectl apply -f infra/test.yaml
-	kubectl get pods,deployments -n foo --show-labels
-	kubectl get ns foo --show-labels
+	kustomize build infra/test | kubectl apply -f -
+	kubectl get pods,deployments -n boo --show-labels
+	kubectl get ns boo --show-labels
 
 test-clean:
-	kubectl delete -f infra/test.yaml --ignore-not-found=true
+	kustomize build infra/test | kubectl delete --ignore-not-found=true -f -
 
 clean: uninstall test-clean 
 
