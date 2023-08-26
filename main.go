@@ -105,6 +105,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Unmarshal the Deployment object from the AdmissionReview request.
 	deployment := v1.Deployment{}
 	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &deployment)
 	if err != nil {
@@ -112,21 +113,16 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get Deployment name
-	var deploymentName string
-	if len(deployment.GetName()) > 0 {
-		deploymentName = deployment.GetName()
-	} else {
-		deploymentName = deployment.GetGenerateName()
-	}
-	var deploymentNamespace = deployment.GetNamespace()
+	// Get Deployment name and namespace
+	deploymentName := deployment.GetName()
+	deploymentNamespace := deployment.GetNamespace()
 	var fullDeploymentName = deploymentNamespace + "/" + deploymentName
 
-	// Print string(body) when you want to see the AdmissionReview in the logs
 	log.Printf("New Admission Review Request is being processed: User: %v \t Deployment: %v \n",
 		admissionReviewReq.Request.UserInfo.Username,
 		fullDeploymentName,
 	)
+	// Print string(body) when you want to see the AdmissionReview in the logs
 	// log.Printf("Admission Request Body: \n %v", string(body))
 
 	//  Check if priorityClassName is already set
