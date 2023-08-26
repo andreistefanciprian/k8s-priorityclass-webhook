@@ -158,6 +158,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Printf("Admission Review Response:\n %+v", admissionReviewResponse)
 	w.Header().Set("Content-Type", "application/json")
 	log.Printf("Added priorityClassName to Pod %v: %v \n",
 		podName,
