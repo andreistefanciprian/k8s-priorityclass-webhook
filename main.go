@@ -119,22 +119,24 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	} else {
 		deploymentName = deployment.GetGenerateName()
 	}
+	var deploymentNamespace = deployment.GetNamespace()
+	var fullDeploymentName = deploymentNamespace + "/" + deploymentName
 
 	// Print string(body) when you want to see the AdmissionReview in the logs
 	log.Printf("New Admission Review Request is being processed: User: %v \t Deployment: %v \n",
 		admissionReviewReq.Request.UserInfo.Username,
-		deploymentName,
+		fullDeploymentName,
 	)
 	// log.Printf("Admission Request Body: \n %v", string(body))
 
 	//  Check if priorityClassName is already set
 	if deployment.Spec.Template.Spec.PriorityClassName != "" {
 		log.Printf("Deployment %v has PriorityClassName already set to: %v \n",
-			deploymentName,
+			fullDeploymentName,
 			deployment.Spec.Template.Spec.PriorityClassName,
 		)
 	} else {
-		log.Printf("Deployment %v does not have PriorityClassName set.\n", deploymentName)
+		log.Printf("Deployment %v does not have PriorityClassName set.\n", fullDeploymentName)
 	}
 
 	// Step 3: Construct the AdmissionReview response.
@@ -157,7 +159,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		Response: &v1beta1.AdmissionResponse{
 			UID:     admissionReviewReq.Request.UID,
 			Allowed: true,
-			Result:  &metav1.Status{Message: fmt.Sprintf("PriorityClassName %v added to Deployment %v.", patchOp.Value, deploymentName)},
+			Result:  &metav1.Status{Message: fmt.Sprintf("PriorityClassName %v added to Deployment %v.", patchOp.Value, fullDeploymentName)},
 		},
 	}
 
@@ -173,7 +175,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	log.Printf("Added priorityClassName %v to Deployment: %v \n",
 		patchOp.Value,
-		deploymentName,
+		fullDeploymentName,
 	)
 	w.Write(bytes)
 }
