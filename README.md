@@ -1,11 +1,9 @@
-# Pod Labeler Mutating Webhook
+# K8s Mutating Webhook that adds priorityClassName to Deployments
 
 ## Overview
 
 This project implements a Kubernetes MutatingAdmissionWebhook, serving as an [admission controller](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/) in the Kubernetes cluster. 
 The webhook intercepts Deployment creation and update requests and automatically adds a priorityClassName (eg: ```priorityClassName=high-priority-nonpreempting```).
-
-Additionally, the webhook code can be easily modified to perform various other changes to other K8s objects, such as altering their names, adding security parameters or injecting a sidecar.
 
 ## Admission Controllers and webhooks in the K8s Architecture
 
@@ -25,7 +23,7 @@ Before getting started with the webhook, ensure that the following tools and res
 - **Makefile**: The project uses a Makefile for automation and building. Understanding Makefile syntax will help you work with the provided build and deployment scripts.
 - **Kustomize**: Used for bulding the test scenario manifests.
 
-In case you are using your own credentials for the container registry, make sure you set up these credentials as Github Secrets for your repo.
+**Note**: In case you are using your own credentials for the container registry, make sure you set up these credentials as Github Secrets for your repo.
 These credentials are used by Github Actions to push the image to dockerhub.
 
    ```

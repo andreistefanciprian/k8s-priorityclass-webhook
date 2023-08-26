@@ -121,7 +121,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Print string(body) when you want to see the AdmissionReview in the logs
-	log.Printf("New Admission Review Request is being processed: User: %v \t PodName: %v \n",
+	log.Printf("New Admission Review Request is being processed: User: %v \t Deployment: %v \n",
 		admissionReviewReq.Request.UserInfo.Username,
 		deploymentName,
 	)
@@ -129,9 +129,12 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 
 	//  Check if priorityClassName is already set
 	if deployment.Spec.Template.Spec.PriorityClassName != "" {
-		log.Printf("PriorityClassName is already set to: %v \n", deployment.Spec.Template.Spec.PriorityClassName)
+		log.Printf("Deployment %v has PriorityClassName already set to: %v \n",
+			deploymentName,
+			deployment.Spec.Template.Spec.PriorityClassName,
+		)
 	} else {
-		log.Printf("PriorityClassName is not set, adding it to the pod spec. \n")
+		log.Printf("Deployment %v does not have PriorityClassName set.\n", deploymentName)
 	}
 
 	// Step 3: Construct the AdmissionReview response.
@@ -168,7 +171,8 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 
 	// log.Printf("Admission Review Response:\n %+v", admissionReviewResponse)
 	w.Header().Set("Content-Type", "application/json")
-	log.Printf("Added priorityClassName to Deployment: %v \n",
+	log.Printf("Added priorityClassName %v to Deployment: %v \n",
+		patchOp.Value,
 		deploymentName,
 	)
 	w.Write(bytes)
