@@ -104,7 +104,6 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// var pod apiv1.Pod
 	dp := v1.Deployment{}
 	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &dp)
 	if err != nil {
@@ -112,43 +111,33 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the pod name
-	var podName string
+	// Get Deployment name
+	var deploymentName string
 	if len(dp.GetName()) > 0 {
-		podName = dp.GetName()
+		deploymentName = dp.GetName()
 	} else {
-		podName = dp.GetGenerateName()
+		deploymentName = dp.GetGenerateName()
 	}
 
 	// Print string(body) when you want to see the AdmissionReview in the logs
 	log.Printf("New Admission Review Request is being processed: User: %v \t PodName: %v \n",
 		admissionReviewReq.Request.UserInfo.Username,
-		podName,
+		deploymentName,
 	)
 	log.Printf("Admission Request Body: \n %v", string(body))
 
-	// if pod.Spec.PriorityClassName != "" {
-	// 	log.Printf("Pod %v already has a priorityClassName: %v \n",
-	// 		podName,
-	// 		pod.Spec.PriorityClassName,
-	// 	)
-	// 	return
-	// } else {
-	// 	log.Printf("Pod %v does not have a priorityClassName: %v \n",
-	// 		podName,
-	// 		pod.Spec.PriorityClassName,
-	// 	)
-	// }
+	//  Check if priorityClassName is already set
+	if dp.Spec.Template.Spec.PriorityClassName != "" {
+		log.Printf("PriorityClassName is already set to: %v \n", dp.Spec.Template.Spec.PriorityClassName)
+	} else {
+		log.Printf("PriorityClassName is not set, adding it to the pod spec. \n")
+	}
+
 	// Step 3: Construct the AdmissionReview response.
 	// Construct the JSON patch operation for adding the "priorityClassName" parameter to the pod spec.
 	var patches []patchOperation
-	// dp.PriorityClassName = "high-priority-nonpreempting"
-	log.Printf("priorityClassName BEFORE is: %v\n", dp.Spec.Template.Spec.PriorityClassName)
-	// dp.Spec.Template.Spec.PriorityClassName = "high-priority-nonpreempting"
 	patchOp := patchOperation{
-		Op: "add",
-		// Path:  "/spec/template/spec",
-		// Value: dp.Spec.Template.Spec.PriorityClassName,
+		Op:    "add",
 		Path:  "/spec/template/spec/priorityClassName",
 		Value: "high-priority-nonpreempting",
 	}
@@ -178,7 +167,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Admission Review Response:\n %+v", admissionReviewResponse)
 	w.Header().Set("Content-Type", "application/json")
 	log.Printf("Added priorityClassName to Deployment: %v \n",
-		podName,
+		deploymentName,
 	)
 	w.Write(bytes)
 }
