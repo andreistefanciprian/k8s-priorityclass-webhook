@@ -21,8 +21,11 @@ uninstall:
 
 test:
 	kustomize build infra/test | kubectl apply -f -
-	kubectl get pods,deployments -n boo --show-labels
+	sleep 5
+	echo Checking results ...
 	kubectl get ns boo --show-labels
+	kubectl get pods,deployments -n boo
+	kubectl get deployments -n boo -o yaml | grep priorityClassName -B1 -A2
 
 test-clean:
 	kustomize build infra/test | kubectl delete --ignore-not-found=true -f -
