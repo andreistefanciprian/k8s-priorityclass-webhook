@@ -10,6 +10,9 @@ template-webhook-manifest:
 	SHA_DIGEST="$$(curl -s "https://registry.hub.docker.com/v2/repositories/$(DOCKER_IMAGE_NAME)/tags" | jq -r '.results | sort_by(.last_updated) | last .digest')"; \
 	sed -e 's@LATEST_DIGEST@'"$$SHA_DIGEST"'@g' < infra/deployment_template.yaml > infra/deployment.yaml
 
+template:
+	helm template --namespace priorityclass-webhook priorityclass-webhook infra/priorityclass-webhook --create-namespace
+
 install:
 	helm upgrade --namespace priorityclass-webhook --install priorityclass-webhook infra/priorityclass-webhook --create-namespace
 

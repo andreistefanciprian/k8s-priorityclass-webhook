@@ -44,12 +44,17 @@ Build, Register, Deploy and Test the webhook using the provided tasks:
    make build
    ```
 
-2. Deploy and Register webhook:
+2. Check webhook manifests that will be installed:
+   ```
+   make template
+   ```
+
+3. Deploy and Register webhook:
    ```
    make install
    ```
 
-3. Test webhook:
+4. Test webhook:
    ```
    # check logs while creating test Pods and Deployments
    kubectl logs -l app.kubernetes.io/name=priorityclass-webhook --namespace priorityclass-webhook -f
