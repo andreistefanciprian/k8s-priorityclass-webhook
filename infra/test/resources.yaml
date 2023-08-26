@@ -1,8 +1,9 @@
 ---
+# Verify priorityClassName doesn't get set on pods
 apiVersion: v1
 kind: Pod
 metadata:
-  name: nginx-pod
+  name: test-1
   labels:
     app: nginx
 spec:
@@ -10,10 +11,11 @@ spec:
   - name: nginx
     image: nginx
 ---
+# Verify priorityClassName get set on deployments
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-deployment
+  name: test-2
   labels:
     app: nginx
 spec:
@@ -31,3 +33,27 @@ spec:
         image: nginx
         ports:
         - containerPort: 80
+---
+# Verify priorityClassName get set on Deployments with priorityClassName already set
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-3
+  labels:
+    app: nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx
+        ports:
+        - containerPort: 80
+      priorityClassName: system-cluster-critical
