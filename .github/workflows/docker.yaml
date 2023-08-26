@@ -6,15 +6,14 @@ on:
       - '*'
     branches:
       - 'main'
-    # paths:
-    #   - '!infra/priorityclass-webhook/**'
-    #   - '!README.md'
+    paths:
+      - 'go.*'
+      - '*.go'
   pull_request:
     branches: [ 'main' ]
-    # paths:
-    #   - '!infra/priorityclass-webhook/**'
-    #   - '!README.md'
-    #   - '.github/workflows/docker.yaml'
+    paths:
+      - 'go.**'
+      - '**.go'
       
   workflow_dispatch:
 
