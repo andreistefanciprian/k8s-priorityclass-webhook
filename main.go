@@ -144,11 +144,13 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	var patches []patchOperation
 	// dp.PriorityClassName = "high-priority-nonpreempting"
 	log.Printf("priorityClassName BEFORE is: %v\n", dp.Spec.Template.Spec.PriorityClassName)
-	dp.Spec.Template.Spec.PriorityClassName = "high-priority-nonpreempting"
+	// dp.Spec.Template.Spec.PriorityClassName = "high-priority-nonpreempting"
 	patchOp := patchOperation{
-		Op:    "add",
-		Path:  "/spec/template/spec",
-		Value: dp.Spec.Template.Spec.PriorityClassName,
+		Op: "add",
+		// Path:  "/spec/template/spec",
+		// Value: dp.Spec.Template.Spec.PriorityClassName,
+		Path:  "/spec/template/spec/priorityClassName",
+		Value: "high-priority-nonpreempting",
 	}
 	patches = append(patches, patchOp)
 
@@ -175,9 +177,8 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Admission Review Response:\n %+v", admissionReviewResponse)
 	w.Header().Set("Content-Type", "application/json")
-	log.Printf("Added priorityClassName to Pod %v: %v \n",
+	log.Printf("Added priorityClassName to Deployment: %v \n",
 		podName,
-		dp.Spec.Template.Spec.PriorityClassName,
 	)
 	w.Write(bytes)
 }
