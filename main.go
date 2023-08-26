@@ -177,7 +177,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	log.Printf("Added priorityClassName to Pod %v: %v \n",
 		podName,
-		priorityClassName,
+		dp.Spec.Template.Spec.PriorityClassName,
 	)
 	w.Write(bytes)
 }
