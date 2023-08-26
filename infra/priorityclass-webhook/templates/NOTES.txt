@@ -1,7 +1,11 @@
+Here is a helping hand to debug this webhook ....
+
 1. Display the application logs by running this command:
 kubectl logs -l app.kubernetes.io/name=priorityclass-webhook --namespace {{ .Release.Namespace }} -f
+
 2. Fetch generated manifests for priorityclass-webhook using one of these commands:
-helm get manifest priorityclass-webhook -n default
-helm get all priorityclass-webhook -n default
+helm get manifest priorityclass-webhook -n priorityclass-webhook
+helm get all -n priorityclass-webhook -n priorityclass-webhook
+
 3. Check priorityclass-webhook was successfuly installed:
-helm list -A
+helm list -n priorityclass-webhook
