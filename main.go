@@ -147,7 +147,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	dp.Spec.Template.Spec.PriorityClassName = "high-priority-nonpreempting"
 	patchOp := patchOperation{
 		Op:    "add",
-		Path:  "/spec/priorityClassName",
+		Path:  "/spec/template/spec",
 		Value: dp.Spec.Template.Spec.PriorityClassName,
 	}
 	patches = append(patches, patchOp)
@@ -157,7 +157,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Could not marshal JSON patch: %s\n", err.Error()), http.StatusInternalServerError)
 		return
 	}
-
+	log.Printf("Patches: %+v\n", patches)
 	admissionReviewResponse := v1beta1.AdmissionReview{
 		Response: &v1beta1.AdmissionResponse{
 			UID:     admissionReviewReq.Request.UID,
