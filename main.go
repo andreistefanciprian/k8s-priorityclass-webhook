@@ -132,7 +132,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	priorityClassName := "high-priority-nonpreempting"
 	patchOp := patchOperation{
 		Op:    "add",
-		Path:  "/spec/priorityClassName",
+		Path:  "/spec/template/spec/priorityClassName",
 		Value: priorityClassName,
 	}
 	patches = append(patches, patchOp)
