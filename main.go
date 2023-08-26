@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/apps/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
@@ -104,8 +105,8 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dp := v1.Deployment{}
-	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &dp)
+	deployment := v1.Deployment{}
+	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &deployment)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Could not unmarshal pod on admission request: %s\n", err.Error()), http.StatusInternalServerError)
 		return
@@ -113,10 +114,10 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 
 	// Get Deployment name
 	var deploymentName string
-	if len(dp.GetName()) > 0 {
-		deploymentName = dp.GetName()
+	if len(deployment.GetName()) > 0 {
+		deploymentName = deployment.GetName()
 	} else {
-		deploymentName = dp.GetGenerateName()
+		deploymentName = deployment.GetGenerateName()
 	}
 
 	// Print string(body) when you want to see the AdmissionReview in the logs
@@ -124,11 +125,11 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		admissionReviewReq.Request.UserInfo.Username,
 		deploymentName,
 	)
-	log.Printf("Admission Request Body: \n %v", string(body))
+	// log.Printf("Admission Request Body: \n %v", string(body))
 
 	//  Check if priorityClassName is already set
-	if dp.Spec.Template.Spec.PriorityClassName != "" {
-		log.Printf("PriorityClassName is already set to: %v \n", dp.Spec.Template.Spec.PriorityClassName)
+	if deployment.Spec.Template.Spec.PriorityClassName != "" {
+		log.Printf("PriorityClassName is already set to: %v \n", deployment.Spec.Template.Spec.PriorityClassName)
 	} else {
 		log.Printf("PriorityClassName is not set, adding it to the pod spec. \n")
 	}
@@ -148,11 +149,12 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Could not marshal JSON patch: %s\n", err.Error()), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("Patches: %+v\n", patches)
+	// log.Printf("Patches: %+v\n", patches)
 	admissionReviewResponse := v1beta1.AdmissionReview{
 		Response: &v1beta1.AdmissionResponse{
 			UID:     admissionReviewReq.Request.UID,
 			Allowed: true,
+			Result:  &metav1.Status{Message: fmt.Sprintf("PriorityClassName %v added to Deployment %v.", patchOp.Value, deploymentName)},
 		},
 	}
 
@@ -164,7 +166,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Admission Review Response:\n %+v", admissionReviewResponse)
+	// log.Printf("Admission Review Response:\n %+v", admissionReviewResponse)
 	w.Header().Set("Content-Type", "application/json")
 	log.Printf("Added priorityClassName to Deployment: %v \n",
 		deploymentName,
