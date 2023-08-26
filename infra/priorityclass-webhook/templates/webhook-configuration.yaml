@@ -1,0 +1,30 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: {{ include "priorityclass-webhook.fullname" . }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "priorityclass-webhook.fullname" . }} # This is the cert-manager certificate name
+webhooks:
+  - name: {{ include "priorityclass-webhook.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+    admissionReviewVersions:
+      - "v1beta1"
+    sideEffects: "None"
+    timeoutSeconds: 30
+    namespaceSelector:
+      matchExpressions:
+      - key: priorityclass-webhook
+        operator: In
+        values:
+        - enabled
+    objectSelector: {}
+    clientConfig:
+      service:
+        name: {{ include "priorityclass-webhook.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        path: /mutate
+    rules:
+      - operations: ["CREATE", "UPDATE"]
+        apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        resources: ["deployments"]
+    failurePolicy: Ignore # Fail means that the API request will fail if the webhook fails. Ignore means that the API request will succeed even if the webhook fails.

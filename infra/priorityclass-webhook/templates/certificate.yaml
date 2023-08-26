@@ -1,0 +1,21 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "priorityclass-webhook.fullname" . }}
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "priorityclass-webhook.fullname" . }}
+  annotations:
+    cert-manager.io/allow-direct-injection: "true"
+spec:
+  dnsNames:
+  - {{ include "priorityclass-webhook.fullname" . }}.{{ .Release.Namespace }}.svc
+  - {{ include "priorityclass-webhook.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: {{ include "priorityclass-webhook.fullname" . }}
+  secretName: {{ include "priorityclass-webhook.fullname" . }}
