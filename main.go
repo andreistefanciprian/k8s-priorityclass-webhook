@@ -11,7 +11,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"k8s.io/api/admission/v1beta1"
-	apiv1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
@@ -104,8 +104,9 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var pod apiv1.Pod
-	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &pod)
+	// var pod apiv1.Pod
+	dp := v1.Deployment{}
+	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &dp)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Could not unmarshal pod on admission request: %s\n", err.Error()), http.StatusInternalServerError)
 		return
@@ -113,10 +114,10 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 
 	// Get the pod name
 	var podName string
-	if len(pod.GetName()) > 0 {
-		podName = pod.GetName()
+	if len(dp.GetName()) > 0 {
+		podName = dp.GetName()
 	} else {
-		podName = pod.GetGenerateName()
+		podName = dp.GetGenerateName()
 	}
 
 	// Print string(body) when you want to see the AdmissionReview in the logs
@@ -126,14 +127,28 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	)
 	log.Printf("Admission Request Body: \n %v", string(body))
 
+	// if pod.Spec.PriorityClassName != "" {
+	// 	log.Printf("Pod %v already has a priorityClassName: %v \n",
+	// 		podName,
+	// 		pod.Spec.PriorityClassName,
+	// 	)
+	// 	return
+	// } else {
+	// 	log.Printf("Pod %v does not have a priorityClassName: %v \n",
+	// 		podName,
+	// 		pod.Spec.PriorityClassName,
+	// 	)
+	// }
 	// Step 3: Construct the AdmissionReview response.
 	// Construct the JSON patch operation for adding the "priorityClassName" parameter to the pod spec.
 	var patches []patchOperation
-	priorityClassName := "high-priority-nonpreempting"
+	// dp.PriorityClassName = "high-priority-nonpreempting"
+	log.Printf("priorityClassName BEFORE is: %v\n", dp.Spec.Template.Spec.PriorityClassName)
+	dp.Spec.Template.Spec.PriorityClassName = "high-priority-nonpreempting"
 	patchOp := patchOperation{
 		Op:    "add",
-		Path:  "/spec/template/spec/priorityClassName",
-		Value: priorityClassName,
+		Path:  "/spec/priorityClassName",
+		Value: dp.Spec.Template.Spec.PriorityClassName,
 	}
 	patches = append(patches, patchOp)
 
