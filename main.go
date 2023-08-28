@@ -155,11 +155,12 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// log.Printf("Patches: %+v\n", patches)
+	patch_msg := fmt.Sprintf("PriorityClassName %v added to Deployment %v.", patchOp.Value, fullDeploymentName)
 	admissionReviewResponse := v1beta1.AdmissionReview{
 		Response: &v1beta1.AdmissionResponse{
 			UID:     admissionReviewReq.Request.UID,
 			Allowed: true,
-			Result:  &metav1.Status{Message: fmt.Sprintf("PriorityClassName %v added to Deployment %v.", patchOp.Value, fullDeploymentName)},
+			Result:  &metav1.Status{Message: patch_msg},
 		},
 	}
 
@@ -173,10 +174,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 
 	// log.Printf("Admission Review Response:\n %+v", admissionReviewResponse)
 	w.Header().Set("Content-Type", "application/json")
-	log.Printf("Added priorityClassName %v to Deployment: %v \n",
-		patchOp.Value,
-		fullDeploymentName,
-	)
+	log.Println(patch_msg)
 	w.Write(bytes)
 }
 
