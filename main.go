@@ -8,11 +8,11 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 )
@@ -134,43 +134,49 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Step 3: Construct the AdmissionReview response.
-	// Construct the JSON patch operation for adding the "priorityClassName" parameter to the pod spec.
 	var patches []patchOperation
+	// Construct the JSON patch operation for adding the "priorityClassName" field to the pod spec.
 	priorityClassName_patch := patchOperation{
 		Op:    "add",
 		Path:  "/spec/template/spec/priorityClassName",
 		Value: "high-priority-nonpreempting",
 	}
 
-	annotation := make(map[string]string)
-	// now := time.Now()
-	// annotation["PriorityClassName_added_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
-	annotation["PriorityClassName_added_by"] = admissionReviewReq.Request.UserInfo.Username
+	// Construct the JSON patch operation for adding the "priorityClassWebhook/updated_by" annotation to the pod metadata.
+	now := time.Now()
+	deployment.ObjectMeta.Annotations["priorityClassWebhook/updated_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
 	annotation_patch := patchOperation{
 		Op:    "add",
 		Path:  "/metadata/annotations",
-		Value: annotation,
+		Value: deployment.ObjectMeta.Annotations,
 	}
+
+	// Append the patch operations to the patches slice.
 	patches = append(patches, priorityClassName_patch, annotation_patch)
 
+	// Marshal the patches slice to JSON.
 	patchBytes, err := json.Marshal(patches)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Could not marshal JSON patch: %s\n", err.Error()), http.StatusInternalServerError)
 		return
 	}
+
 	// log.Printf("Patches: %+v\n", patches)
 	patch_msg := fmt.Sprintf("PriorityClassName %v added to Deployment %v.", priorityClassName_patch.Value, deploymentName)
+
+	// Construct the AdmissionReview response.
 	admissionReviewResponse := v1beta1.AdmissionReview{
 		Response: &v1beta1.AdmissionResponse{
-			UID:              admissionReviewReq.Request.UID,
-			Allowed:          true,
-			Result:           &metav1.Status{Message: patch_msg},
-			AuditAnnotations: annotation,
+			UID:     admissionReviewReq.Request.UID,
+			Allowed: true,
+			// Result:           &metav1.Status{Message: patch_msg},	// Result contains extra details into why an admission request was denied.
+			AuditAnnotations: deployment.ObjectMeta.Annotations, // AuditAnnotations are added to the audit record when this admission response is added to the audit event.
+			Warnings:         []string{patch_msg},
 		},
 	}
-
 	admissionReviewResponse.Response.Patch = patchBytes
 
+	// Step 4: Send the AdmissionReview response.
 	bytes, err := json.Marshal(&admissionReviewResponse)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Could not marshal JSON Admission Response: %s\n", err.Error()), http.StatusInternalServerError)
