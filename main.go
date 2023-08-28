@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/gorilla/mux"
 	"k8s.io/api/admission/v1beta1"
@@ -106,6 +105,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Unmarshal the Deployment object from the AdmissionReview request.
 	deployment := v1.Deployment{}
 	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &deployment)
 	if err != nil {
@@ -113,42 +113,45 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get Deployment name
-	var deploymentName string
-	if len(deployment.GetName()) > 0 {
-		deploymentName = deployment.GetName()
-	} else {
-		deploymentName = deployment.GetGenerateName()
-	}
-	var deploymentNamespace = deployment.GetNamespace()
-	var fullDeploymentName = deploymentNamespace + "/" + deploymentName
+	// Construct Deployment name in the format: namespace/name
+	deploymentName := deployment.GetNamespace() + "/" + deployment.GetName()
 
-	// Print string(body) when you want to see the AdmissionReview in the logs
 	log.Printf("New Admission Review Request is being processed: User: %v \t Deployment: %v \n",
 		admissionReviewReq.Request.UserInfo.Username,
-		fullDeploymentName,
+		deploymentName,
 	)
+	// Print string(body) when you want to see the AdmissionReview in the logs
 	// log.Printf("Admission Request Body: \n %v", string(body))
 
 	//  Check if priorityClassName is already set
 	if deployment.Spec.Template.Spec.PriorityClassName != "" {
 		log.Printf("Deployment %v has PriorityClassName already set to: %v \n",
-			fullDeploymentName,
+			deploymentName,
 			deployment.Spec.Template.Spec.PriorityClassName,
 		)
 	} else {
-		log.Printf("Deployment %v does not have PriorityClassName set.\n", fullDeploymentName)
+		log.Printf("Deployment %v does not have PriorityClassName set.\n", deploymentName)
 	}
 
 	// Step 3: Construct the AdmissionReview response.
 	// Construct the JSON patch operation for adding the "priorityClassName" parameter to the pod spec.
 	var patches []patchOperation
-	patchOp := patchOperation{
+	priorityClassName_patch := patchOperation{
 		Op:    "add",
 		Path:  "/spec/template/spec/priorityClassName",
 		Value: "high-priority-nonpreempting",
 	}
-	patches = append(patches, patchOp)
+
+	annotation := make(map[string]string)
+	// now := time.Now()
+	// annotation["PriorityClassName_added_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
+	annotation["PriorityClassName_added_by"] = admissionReviewReq.Request.UserInfo.Username
+	annotation_patch := patchOperation{
+		Op:    "add",
+		Path:  "/metadata/annotations",
+		Value: annotation,
+	}
+	patches = append(patches, priorityClassName_patch, annotation_patch)
 
 	patchBytes, err := json.Marshal(patches)
 	if err != nil {
@@ -156,11 +159,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// log.Printf("Patches: %+v\n", patches)
-	patch_msg := fmt.Sprintf("PriorityClassName %v added to Deployment %v.", patchOp.Value, fullDeploymentName)
-	annotation := make(map[string]string)
-	now := time.Now()
-	annotation["PriorityClassName_added_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
-
+	patch_msg := fmt.Sprintf("PriorityClassName %v added to Deployment %v.", priorityClassName_patch.Value, deploymentName)
 	admissionReviewResponse := v1beta1.AdmissionReview{
 		Response: &v1beta1.AdmissionResponse{
 			UID:              admissionReviewReq.Request.UID,
