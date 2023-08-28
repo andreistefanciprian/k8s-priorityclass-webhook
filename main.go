@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	"k8s.io/api/admission/v1beta1"
@@ -156,11 +157,16 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	}
 	// log.Printf("Patches: %+v\n", patches)
 	patch_msg := fmt.Sprintf("PriorityClassName %v added to Deployment %v.", patchOp.Value, fullDeploymentName)
+	annotation := make(map[string]string)
+	now := time.Now()
+	annotation["PriorityClassName_added_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
+
 	admissionReviewResponse := v1beta1.AdmissionReview{
 		Response: &v1beta1.AdmissionResponse{
-			UID:     admissionReviewReq.Request.UID,
-			Allowed: true,
-			Result:  &metav1.Status{Message: patch_msg},
+			UID:              admissionReviewReq.Request.UID,
+			Allowed:          true,
+			Result:           &metav1.Status{Message: patch_msg},
+			AuditAnnotations: annotation,
 		},
 	}
 
