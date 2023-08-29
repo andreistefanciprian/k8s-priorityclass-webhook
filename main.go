@@ -154,8 +154,9 @@ func mutateDeployment(w http.ResponseWriter, req v1beta1.AdmissionReview) ([]byt
 	// Construct Deployment name in the format: namespace/name
 	deploymentName := deployment.GetNamespace() + "/" + deployment.GetName()
 
-	log.Printf("New Admission Review Request is being processed: User: %v \t Deployment: %v \n",
+	log.Printf("New Admission Review Request is being processed: User: %v \t Operation: %v \t Deployment: %v \n",
 		req.Request.UserInfo.Username,
+		req.Request.Operation,
 		deploymentName,
 	)
 	// Print string(body) when you want to see the AdmissionReview in the logs
