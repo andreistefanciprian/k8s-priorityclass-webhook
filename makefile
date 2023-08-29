@@ -22,8 +22,19 @@ uninstall:
 test:
 	bash ./scripts/run_tests.sh
 
+test-update:
+	kubectl create namespace too
+	kubectl label namespace too priorityclass-webhook=enabled
+	kubectl get namespace too --show-labels
+	kubectl -n too create deployment test --image nginx --replicas 1
+
+check-update:
+	kubectl patch deployment test -n too --type='json' -p='[{"op": "add", "path": "/metadata/annotations", "value": {"test": "update"}}]'
+	kubectl get deployments -n too -o yaml | grep priority
+	
 test-clean:
 	kustomize build infra/test | kubectl delete --ignore-not-found=true -f -
+	kubectl delete ns too --ignore-not-found=true
 
 clean: uninstall test-clean 
 
@@ -31,3 +42,7 @@ check:
 	helm list -n priorityclass-webhook
 	kubectl get MutatingWebhookConfiguration priorityclass-webhook --ignore-not-found=true -n priorityclass-webhook
 	kubectl get pods,secrets,certificates -n priorityclass-webhook
+
+
+logs:
+	kubectl logs -l app.kubernetes.io/name=priorityclass-webhook --namespace priorityclass-webhook -f

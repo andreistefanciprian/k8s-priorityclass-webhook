@@ -3,7 +3,7 @@
 ## Overview
 
 This project implements a Kubernetes MutatingAdmissionWebhook, serving as an [admission controller](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/) in the Kubernetes cluster. 
-The webhook intercepts Deployment creation and update requests and automatically adds a priorityClassName (eg: ```priorityClassName=high-priority-nonpreempting```).
+The webhook intercepts Deployment CREATE and UPDATE requests and automatically adds a priorityClassName (eg: ```priorityClassName=high-priority-nonpreempting```) and an annotation.
 
 ## Admission Controllers and webhooks in the K8s Architecture
 
@@ -47,7 +47,12 @@ Build, Register, Deploy and Test the webhook using the provided tasks:
    make template
    ```
 
-3. Deploy and Register webhook:
+3. Build a deployment before registering the webhook so we can test the Deployment UPDATE operation:
+   ```
+   make test-update
+   ```
+
+4. Deploy and Register webhook:
    ```
    make install
    ```
@@ -59,14 +64,16 @@ Build, Register, Deploy and Test the webhook using the provided tasks:
 
    # create Pods and Deployments
    make test
-
-   # cleanup test pods
-   make test-clean
    ```
 
-5. Unregister and Remove the webhook:
+5. Test update operation:
    ```
-   make uninstall
+   make check-update
+   ```
+
+6. Remove test resources and uninstall the webhook:
+   ```
+   make clean
    ```
 
 Feel free to adjust the tasks and configurations as needed to fit your specific environment.
