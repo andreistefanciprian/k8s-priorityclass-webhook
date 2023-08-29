@@ -75,37 +75,22 @@ func parseFlags() ServerParameters {
 	return parameters
 }
 
-// HandlePriorityClass is the HTTP handler function for the /priorityClass endpoint.
+// HandlePriorityClass is the HTTP handler function for the /mutate endpoint.
 func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
-	// Step 1: Request validation (Valid requests are POST with Content-Type: application/json)
-	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+
+	// Validate Request (Valid requests are POST with Content-Type: application/json)
+	if !validateRequest(w, r) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
+	// Parse the AdmissionReview request.
+	admissionReviewReq, err := parseRequest(w, r)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to read request body: %s\n", err.Error()), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if contentType := r.Header.Get("Content-Type"); contentType != jsonContentType {
-		http.Error(w, fmt.Sprintf("Invalid content type %s\n", contentType), http.StatusBadRequest)
-		return
-	}
-
-	// Step 2: Parse the AdmissionReview request.
-	var admissionReviewReq v1beta1.AdmissionReview
-	if _, _, err := deserializer.Decode(body, nil, &admissionReviewReq); err != nil {
-		http.Error(w, fmt.Sprintf("Could not deserialize request: %s\n", err.Error()), http.StatusBadRequest)
-		return
-	} else if admissionReviewReq.Request == nil {
-		http.Error(w, "Malformed admission review (request is nil)", http.StatusBadRequest)
-		return
-	}
-
-	// Unmarshal the Deployment object from the AdmissionReview request.
+	// Unmarshal the Deployment object from the AdmissionReview request into a Deployment struct.
 	deployment := v1.Deployment{}
 	err = json.Unmarshal(admissionReviewReq.Request.Object.Raw, &deployment)
 	if err != nil {
@@ -133,8 +118,6 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Deployment %v does not have PriorityClassName set.\n", deploymentName)
 	}
 
-	// Step 3: Construct the AdmissionReview response.
-	var patches []patchOperation
 	// Construct the JSON patch operation for adding the "priorityClassName" field to the pod spec.
 	priorityClassName_patch := patchOperation{
 		Op:    "add",
@@ -142,7 +125,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		Value: "high-priority-nonpreempting",
 	}
 
-	// Construct the JSON patch operation for adding the "priorityClassWebhook/updated_by" annotation to the pod metadata.
+	// Construct the JSON patch operation for adding the "priorityClassWebhook/updated_at" annotation to the pod metadata.
 	now := time.Now()
 	deployment.ObjectMeta.Annotations["priorityClassWebhook/updated_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
 	annotation_patch := patchOperation{
@@ -152,6 +135,7 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Append the patch operations to the patches slice.
+	var patches []patchOperation
 	patches = append(patches, priorityClassName_patch, annotation_patch)
 
 	// Marshal the patches slice to JSON.
@@ -161,7 +145,6 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// log.Printf("Patches: %+v\n", patches)
 	patch_msg := fmt.Sprintf("PriorityClassName %v added to Deployment %v.", priorityClassName_patch.Value, deploymentName)
 
 	// Construct the AdmissionReview response.
@@ -176,14 +159,13 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 	}
 	admissionReviewResponse.Response.Patch = patchBytes
 
-	// Step 4: Send the AdmissionReview response.
+	// Send the AdmissionReview response.
 	bytes, err := json.Marshal(&admissionReviewResponse)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Could not marshal JSON Admission Response: %s\n", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-	// log.Printf("Admission Review Response:\n %+v", admissionReviewResponse)
 	w.Header().Set("Content-Type", "application/json")
 	log.Println(patch_msg)
 	w.Write(bytes)
@@ -193,4 +175,37 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 func HandleHealthz(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Health check at %v\n", r.URL.Path)
 	w.WriteHeader(http.StatusOK)
+}
+
+// validateRequest checks requests are POST with Content-Type: application/json
+func validateRequest(w http.ResponseWriter, r *http.Request) bool {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return false
+	}
+
+	if contentType := r.Header.Get("Content-Type"); contentType != jsonContentType {
+		http.Error(w, fmt.Sprintf("Invalid content type %s", contentType), http.StatusBadRequest)
+		return false
+	}
+
+	return true
+}
+
+// parseRequest parses the AdmissionReview request.
+func parseRequest(w http.ResponseWriter, r *http.Request) (*v1beta1.AdmissionReview, error) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read request body: %s", err.Error())
+	}
+
+	var admissionReviewReq v1beta1.AdmissionReview
+	if _, _, err := deserializer.Decode(body, nil, &admissionReviewReq); err != nil {
+		return nil, fmt.Errorf("could not deserialize request: %s", err.Error())
+	} else if admissionReviewReq.Request == nil {
+		return nil, fmt.Errorf("malformed admission review (request is nil)")
+	}
+
+	return &admissionReviewReq, nil
 }
