@@ -57,7 +57,7 @@ Build, Register, Deploy and Test the webhook using the provided tasks:
    make install
    ```
 
-4. Test webhook:
+4. Test Deployment CREATE k8s api request:
    ```
    # check logs while creating test Pods and Deployments
    kubectl logs -l app.kubernetes.io/name=priorityclass-webhook --namespace priorityclass-webhook -f
@@ -66,7 +66,7 @@ Build, Register, Deploy and Test the webhook using the provided tasks:
    make test
    ```
 
-5. Test update operation:
+5. Test Deployment UPDATE k8s api request:
    ```
    make check-update
    ```
