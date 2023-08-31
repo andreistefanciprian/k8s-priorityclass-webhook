@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	jsonContentType = `application/json`
+	jsonContentType   = `application/json`
+	priorityClassName = "high-priority-nonpreempting"
 )
 
 var (
@@ -63,6 +64,7 @@ type patchOperation struct {
 	Value interface{} `json:"value,omitempty"`
 }
 
+// parseFlags parses the CLI params and returns a ServerParameters struct.
 func parseFlags() ServerParameters {
 	var parameters ServerParameters
 
@@ -90,22 +92,15 @@ func HandlePriorityClass(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Mutate the Deployment object and return the AdmissionReview response.
-	bytes, err := mutateDeployment(w, *admissionReviewReq)
+	// Build AdmissionReview response.
+	admissionReviewResponse, err := buildResponse(w, *admissionReviewReq)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Write the AdmissionReview response to the http response writer.
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(bytes)
-}
-
-// HandleHealthz is a liveness probe.
-func HandleHealthz(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Health check at %v\n", r.URL.Path)
-	w.WriteHeader(http.StatusOK)
+	sendResponse(w, *admissionReviewResponse)
 }
 
 // validateRequest checks requests are POST with Content-Type: application/json
@@ -141,8 +136,8 @@ func parseRequest(w http.ResponseWriter, r *http.Request) (*v1beta1.AdmissionRev
 	return &admissionReviewReq, nil
 }
 
-// mutateDeployment mutates the Deployment object and returns the AdmissionReview response.
-func mutateDeployment(w http.ResponseWriter, req v1beta1.AdmissionReview) ([]byte, error) {
+// buildResponse builds the AdmissionReview response.
+func buildResponse(w http.ResponseWriter, req v1beta1.AdmissionReview) (*v1beta1.AdmissionReview, error) {
 
 	// Unmarshal the Deployment object from the AdmissionReview request into a Deployment struct.
 	deployment := v1.Deployment{}
@@ -162,20 +157,63 @@ func mutateDeployment(w http.ResponseWriter, req v1beta1.AdmissionReview) ([]byt
 	// Print string(body) when you want to see the AdmissionReview in the logs
 	// log.Printf("Admission Request Body: \n %v", string(body))
 
-	//  Check if priorityClassName is already set
-	if deployment.Spec.Template.Spec.PriorityClassName != "" {
-		log.Printf("Deployment %v has PriorityClassName already set to: %v",
-			deploymentName,
-			deployment.Spec.Template.Spec.PriorityClassName,
-		)
-	} else {
-		log.Printf("Deployment %v does not have PriorityClassName set.", deploymentName)
+	// Construct the AdmissionReview response.
+	admissionReviewResponse := v1beta1.AdmissionReview{
+		Response: &v1beta1.AdmissionResponse{
+			UID:     req.Request.UID,
+			Allowed: true,
+		},
 	}
 
-	// Build json patch
+	//  Check if priorityClassName is already set
+	if deployment.Spec.Template.Spec.PriorityClassName == priorityClassName {
+		log.Printf("Deployment %v has PriorityClassName already set to: %v", deploymentName, deployment.Spec.Template.Spec.PriorityClassName)
+	} else {
+		patchBytes, err := buildJsonPatch(priorityClassName)
+		if err != nil {
+			return nil, fmt.Errorf("could not build JSON patch: %s", err.Error())
+		}
+		admissionReviewResponse.Response.AuditAnnotations = deployment.ObjectMeta.Annotations // AuditAnnotations are added to the audit record when this admission response is added to the audit event.
+		admissionReviewResponse.Response.Patch = patchBytes
+		patchMsg := fmt.Sprintf("PriorityClassName %v added to Deployment %v.", priorityClassName, deploymentName)
+
+		if deployment.Spec.Template.Spec.PriorityClassName != priorityClassName {
+			stdoutMsg := fmt.Sprintf("Deployment %v has PriorityClassName already set to: %v",
+				deploymentName,
+				deployment.Spec.Template.Spec.PriorityClassName,
+			)
+			log.Println(stdoutMsg)
+			admissionReviewResponse.Response.Warnings = []string{stdoutMsg, patchMsg}
+
+		} else {
+			stdoutMsg := fmt.Sprintf("Deployment %v does not have a PriorityClassName set.", deploymentName)
+			log.Println(stdoutMsg)
+			admissionReviewResponse.Response.Warnings = []string{stdoutMsg, patchMsg}
+		}
+	}
+
+	return &admissionReviewResponse, nil
+}
+
+// sendResponse writes the AdmissionReview response to the http response writer.
+func sendResponse(w http.ResponseWriter, admissionReviewResponse v1beta1.AdmissionReview) {
+	// Marshal the AdmissionReview response to JSON.
+	bytes, err := json.Marshal(&admissionReviewResponse)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("could not marshal JSON Admission Response: %s", err.Error()), http.StatusInternalServerError)
+		return
+	}
+
+	// Write the AdmissionReview response to the http response writer.
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(bytes)
+}
+
+// buildJsonPatch builds a JSON patch to add the priorityClassName and annotation to a Deployment.
+func buildJsonPatch(priorityClassName string) ([]byte, error) {
 	now := time.Now()
-	deployment.ObjectMeta.Annotations["priorityClassWebhook/updated_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
-	priorityClassName := "high-priority-nonpreempting"
+	annotation := make(map[string]string)
+	annotation["priorityClassWebhook/updated_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
 	patch := []patchOperation{
 		patchOperation{
 			Op:    "add",
@@ -185,7 +223,7 @@ func mutateDeployment(w http.ResponseWriter, req v1beta1.AdmissionReview) ([]byt
 		patchOperation{
 			Op:    "add",
 			Path:  "/metadata/annotations",
-			Value: deployment.ObjectMeta.Annotations,
+			Value: annotation,
 		},
 	}
 	// Marshal the patch slice to JSON.
@@ -194,26 +232,5 @@ func mutateDeployment(w http.ResponseWriter, req v1beta1.AdmissionReview) ([]byt
 		return nil, fmt.Errorf("could not marshal JSON patch: %s", err.Error())
 	}
 
-	patch_msg := fmt.Sprintf("PriorityClassName %v added to Deployment %v.", priorityClassName, deploymentName)
-
-	// Construct the AdmissionReview response.
-	admissionReviewResponse := v1beta1.AdmissionReview{
-		Response: &v1beta1.AdmissionResponse{
-			UID:     req.Request.UID,
-			Allowed: true,
-			// Result:           &metav1.Status{Message: patch_msg},	// Result contains extra details into why an admission request was denied.
-			AuditAnnotations: deployment.ObjectMeta.Annotations, // AuditAnnotations are added to the audit record when this admission response is added to the audit event.
-			Warnings:         []string{patch_msg},
-		},
-	}
-	admissionReviewResponse.Response.Patch = patchBytes
-
-	// Send the AdmissionReview response.
-	bytes, err := json.Marshal(&admissionReviewResponse)
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal JSON Admission Response: %s", err.Error())
-	}
-
-	log.Println(patch_msg)
-	return bytes, nil
+	return patchBytes, nil
 }
