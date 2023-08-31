@@ -33,6 +33,11 @@ These credentials are used by Github Actions to push the image to dockerhub.
    gh secret set DOCKERHUB_TOKEN -b"${TOKEN}"
    ```
 
+**Note**: Make sure the priorityclass you want to configure for deployments exists in the cluster.
+
+   ```
+   kubectl apply -f https://raw.githubusercontent.com/andreistefanciprian/flux-demo/main/infra/priorityclasses/high-priority.yaml
+   ```
 ## Build and Run the Webhook
 
 Build, Register, Deploy and Test the webhook using the provided tasks:
