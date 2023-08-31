@@ -177,16 +177,16 @@ func buildResponse(w http.ResponseWriter, req v1beta1.AdmissionReview) (*v1beta1
 		admissionReviewResponse.Response.Patch = patchBytes
 		patchMsg := fmt.Sprintf("PriorityClassName %v added to Deployment %v.", priorityClassName, deploymentName)
 
-		if deployment.Spec.Template.Spec.PriorityClassName != priorityClassName {
-			stdoutMsg := fmt.Sprintf("Deployment %v has PriorityClassName already set to: %v",
-				deploymentName,
-				deployment.Spec.Template.Spec.PriorityClassName,
-			)
+		if deployment.Spec.Template.Spec.PriorityClassName == "" {
+			stdoutMsg := fmt.Sprintf("Deployment %v does not have a PriorityClassName set.", deploymentName)
 			log.Println(stdoutMsg)
 			admissionReviewResponse.Response.Warnings = []string{stdoutMsg, patchMsg}
 
 		} else {
-			stdoutMsg := fmt.Sprintf("Deployment %v does not have a PriorityClassName set.", deploymentName)
+			stdoutMsg := fmt.Sprintf("Deployment %v has PriorityClassName already set to: %v",
+				deploymentName,
+				deployment.Spec.Template.Spec.PriorityClassName,
+			)
 			log.Println(stdoutMsg)
 			admissionReviewResponse.Response.Warnings = []string{stdoutMsg, patchMsg}
 		}
