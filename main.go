@@ -172,33 +172,29 @@ func mutateDeployment(w http.ResponseWriter, req v1beta1.AdmissionReview) ([]byt
 		log.Printf("Deployment %v does not have PriorityClassName set.", deploymentName)
 	}
 
-	// Construct the JSON patch operation for adding the "priorityClassName" field to the pod spec.
-	priorityClassName_patch := patchOperation{
-		Op:    "add",
-		Path:  "/spec/template/spec/priorityClassName",
-		Value: "high-priority-nonpreempting",
-	}
-
-	// Construct the JSON patch operation for adding the "priorityClassWebhook/updated_at" annotation to the pod metadata.
+	// Build json patch
 	now := time.Now()
 	deployment.ObjectMeta.Annotations["priorityClassWebhook/updated_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
-	annotation_patch := patchOperation{
-		Op:    "add",
-		Path:  "/metadata/annotations",
-		Value: deployment.ObjectMeta.Annotations,
+	priorityClassName := "high-priority-nonpreempting"
+	patch := []patchOperation{
+		patchOperation{
+			Op:    "add",
+			Path:  "/spec/template/spec/priorityClassName",
+			Value: priorityClassName,
+		},
+		patchOperation{
+			Op:    "add",
+			Path:  "/metadata/annotations",
+			Value: deployment.ObjectMeta.Annotations,
+		},
 	}
-
-	// Append the patch operations to the patches slice.
-	var patches []patchOperation
-	patches = append(patches, priorityClassName_patch, annotation_patch)
-
-	// Marshal the patches slice to JSON.
-	patchBytes, err := json.Marshal(patches)
+	// Marshal the patch slice to JSON.
+	patchBytes, err := json.Marshal(patch)
 	if err != nil {
 		return nil, fmt.Errorf("could not marshal JSON patch: %s", err.Error())
 	}
 
-	patch_msg := fmt.Sprintf("PriorityClassName %v added to Deployment %v.", priorityClassName_patch.Value, deploymentName)
+	patch_msg := fmt.Sprintf("PriorityClassName %v added to Deployment %v.", priorityClassName, deploymentName)
 
 	// Construct the AdmissionReview response.
 	admissionReviewResponse := v1beta1.AdmissionReview{
