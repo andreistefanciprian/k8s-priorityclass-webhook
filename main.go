@@ -179,7 +179,7 @@ func buildResponse(w http.ResponseWriter, req v1beta1.AdmissionReview) (*v1beta1
 
 		if deployment.Spec.Template.Spec.PriorityClassName == "" {
 			stdoutMsg := fmt.Sprintf("Deployment %v does not have a PriorityClassName set.", deploymentName)
-			log.Println(stdoutMsg)
+			log.Println(stdoutMsg, patchMsg)
 			admissionReviewResponse.Response.Warnings = []string{stdoutMsg, patchMsg}
 
 		} else {
@@ -187,7 +187,7 @@ func buildResponse(w http.ResponseWriter, req v1beta1.AdmissionReview) (*v1beta1
 				deploymentName,
 				deployment.Spec.Template.Spec.PriorityClassName,
 			)
-			log.Println(stdoutMsg)
+			log.Println(stdoutMsg, patchMsg)
 			admissionReviewResponse.Response.Warnings = []string{stdoutMsg, patchMsg}
 		}
 	}
