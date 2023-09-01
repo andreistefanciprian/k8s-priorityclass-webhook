@@ -103,7 +103,7 @@ func buildResponse(w http.ResponseWriter, req v1beta1.AdmissionReview) (*v1beta1
 	if deployment.Spec.Template.Spec.PriorityClassName == priorityClassName {
 		log.Printf("Deployment %v has PriorityClassName already set to: %v", deploymentName, deployment.Spec.Template.Spec.PriorityClassName)
 	} else {
-		patchBytes, err := buildJsonPatch(priorityClassName)
+		patchBytes, err := buildJsonPatch(priorityClassName, &deployment)
 		if err != nil {
 			return nil, fmt.Errorf("could not build JSON patch: %s", err.Error())
 		}
@@ -146,10 +146,10 @@ func sendResponse(w http.ResponseWriter, admissionReviewResponse v1beta1.Admissi
 }
 
 // buildJsonPatch builds a JSON patch to add the priorityClassName and annotation to a Deployment.
-func buildJsonPatch(priorityClassName string) ([]byte, error) {
+func buildJsonPatch(priorityClassName string, deployment *v1.Deployment) ([]byte, error) {
 	now := time.Now()
-	annotation := make(map[string]string)
-	annotation["priorityClassWebhook/updated_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
+	annotations := deployment.ObjectMeta.Annotations
+	annotations["priorityClassWebhook/updated_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
 	patch := []patchOperation{
 		patchOperation{
 			Op:    "add",
@@ -159,7 +159,7 @@ func buildJsonPatch(priorityClassName string) ([]byte, error) {
 		patchOperation{
 			Op:    "add",
 			Path:  "/metadata/annotations",
-			Value: annotation,
+			Value: annotations,
 		},
 	}
 	// Marshal the patch slice to JSON.
