@@ -157,7 +157,7 @@ func buildJsonPatch(priorityClassName string, deployment *v1.Deployment) ([]byte
 			Value: priorityClassName,
 		},
 		patchOperation{
-			Op:    "add",
+			Op:    "replace",
 			Path:  "/metadata/annotations",
 			Value: annotations,
 		},
