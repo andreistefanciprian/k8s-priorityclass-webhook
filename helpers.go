@@ -162,6 +162,7 @@ func buildJsonPatch(priorityClassName string, deployment *v1.Deployment) ([]byte
 			Value: annotations,
 		},
 	}
+	log.Printf("Annotations for Deployment %v %v", deployment.ObjectMeta.Annotations, annotations)
 	// Marshal the patch slice to JSON.
 	patchBytes, err := json.Marshal(patch)
 	if err != nil {
