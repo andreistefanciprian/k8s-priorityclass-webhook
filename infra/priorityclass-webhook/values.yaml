@@ -8,7 +8,7 @@ image:
   repository: andreistefanciprian/k8s-priorityclass-webhook
   pullPolicy: Always
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "3cb43493d26a640db366a7935208c3223b4345aa-24"
+  tag: "ed30c635b3074dd9e95eb694de6dc6919ca92416-32"
 
 imagePullSecrets: []
 nameOverride: ""

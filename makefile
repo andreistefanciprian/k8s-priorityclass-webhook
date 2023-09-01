@@ -6,43 +6,36 @@ build:
 	docker build -t $(DOCKER_IMAGE_NAME) . -f infra/Dockerfile
 	docker image push $(DOCKER_IMAGE_NAME)
 
-template-webhook-manifest:
-	SHA_DIGEST="$$(curl -s "https://registry.hub.docker.com/v2/repositories/$(DOCKER_IMAGE_NAME)/tags" | jq -r '.results | sort_by(.last_updated) | last .digest')"; \
-	sed -e 's@LATEST_DIGEST@'"$$SHA_DIGEST"'@g' < infra/deployment_template.yaml > infra/deployment.yaml
-
 template:
 	helm template --namespace priorityclass-webhook priorityclass-webhook infra/priorityclass-webhook --create-namespace
 
-install:
-	helm upgrade --namespace priorityclass-webhook --install priorityclass-webhook infra/priorityclass-webhook --create-namespace
+install: test-pre-deployment
+	helm upgrade --install priorityclass-webhook infra/priorityclass-webhook --namespace priorityclass-webhook --create-namespace
 
 uninstall:
 	helm uninstall priorityclass-webhook --namespace priorityclass-webhook
 
-test:
-	bash ./scripts/run_tests.sh
+test: test-post-deployment
 
-test-update:
-	kubectl create namespace too
-	kubectl label namespace too priorityclass-webhook=enabled
-	kubectl get namespace too --show-labels
-	kubectl -n too create deployment test --image nginx --replicas 1
+test-post-deployment:
+	@echo Builds test Deployments after webhook registration...
+	kustomize build infra/test-create | kubectl apply -f -
 
-check-update:
-	kubectl patch deployment test -n too --type='json' -p='[{"op": "add", "path": "/metadata/annotations", "value": {"test": "update"}}]'
-	kubectl get deployments -n too -o yaml | grep priority
+test-pre-deployment:
+	@echo Builds test Deployment before webhook registration...
+	kustomize build infra/test-update | kubectl apply -f -
 	
-test-clean:
-	kustomize build infra/test | kubectl delete --ignore-not-found=true -f -
-	kubectl delete ns too --ignore-not-found=true
+clean-tests:
+	kustomize build infra/test-create | kubectl delete --ignore-not-found=true -f -
+	kustomize build infra/test-update | kubectl delete --ignore-not-found=true -f -
 
-clean: uninstall test-clean 
+clean: uninstall clean-tests
+	kubectl delete ns priorityclass-webhook --ignore-not-found=true
 
 check:
-	helm list -n priorityclass-webhook
+	helm list --namespace priorityclass-webhook
 	kubectl get MutatingWebhookConfiguration priorityclass-webhook --ignore-not-found=true -n priorityclass-webhook
 	kubectl get pods,secrets,certificates -n priorityclass-webhook
-
 
 logs:
 	kubectl logs -l app.kubernetes.io/name=priorityclass-webhook --namespace priorityclass-webhook -f

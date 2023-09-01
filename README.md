@@ -52,31 +52,40 @@ Build, Register, Deploy and Test the webhook using the provided tasks:
    make template
    ```
 
-3. Build a deployment before registering the webhook so we can test the Deployment UPDATE operation:
-   ```
-   make test-update
-   ```
-
-4. Deploy and Register webhook:
+3. Deploy and Register webhook:
+   **Note**: Also build a deployment before registering the webhook so we can test the Deployment UPDATE operation later.
    ```
    make install
    ```
 
-4. Test Deployment CREATE k8s api request:
+4. Test Deployment CREATE and UPDATE k8s api requests:
    ```
    # check logs while creating test Pods and Deployments
-   kubectl logs -l app.kubernetes.io/name=priorityclass-webhook --namespace priorityclass-webhook -f
+   make logs
 
    # create Pods and Deployments
    make test
+
+
+	# Test 1 - Checking that preexisting Deployment gets mutated by webhook
+	kubectl patch deployment test-1 -n boo --type='json' -p='[{"op": "add", "path": "/metadata/annotations/patch", "value": "test"}]'
+   kubectl patch deployment test-1 -n boo --type='json' -p='[{"op": "remove", "path": "/spec/template/spec/priorityClassName"}]'
+	kubectl get deployment test-1 -n boo -o yaml --ignore-not-found | grep priority
+
+   # Test 2 - Checking that a Deployment without a priorityClassName gets mutated by webhook
+	kubectl get deployment/test-2 -n boo -o yaml | grep priority
+	
+   # Test 3 - Checking that a Deployment that has priorityClassName set gets mutated by webhook
+	kubectl get deployment/test-3 -n boo -o yaml | grep priority
+
+	# Test 4 - Checking that a Deployment that has priorityClassName already set to high-priority-nonpreempting doesn't get mutated by webhook
+	kubectl get deployment/test-4 -n boo -o yaml | grep priority
+
+	# Test 5 - Checking that a Pod without deployment doesn't get mutated by webhook
+	kubectl get pod/pod -n boo -o yaml | grep priority
    ```
 
-5. Test Deployment UPDATE k8s api request:
-   ```
-   make check-update
-   ```
-
-6. Remove test resources and uninstall the webhook:
+5. Remove test resources and uninstall the webhook:
    ```
    make clean
    ```
