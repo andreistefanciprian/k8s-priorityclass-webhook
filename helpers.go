@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"time"
 
 	"k8s.io/api/admission/v1beta1"
 	v1 "k8s.io/api/apps/v1"
@@ -107,7 +106,7 @@ func buildResponse(w http.ResponseWriter, req v1beta1.AdmissionReview) (*v1beta1
 		if err != nil {
 			return nil, fmt.Errorf("could not build JSON patch: %s", err.Error())
 		}
-		admissionReviewResponse.Response.AuditAnnotations = deployment.ObjectMeta.Annotations // AuditAnnotations are added to the audit record when this admission response is added to the audit event.
+		// admissionReviewResponse.Response.AuditAnnotations = deployment.ObjectMeta.Annotations // AuditAnnotations are added to the audit record when this admission response is added to the audit event.
 		admissionReviewResponse.Response.Patch = patchBytes
 		patchMsg := fmt.Sprintf("Deployment %v was updated with PriorityClassName %v.", deploymentName, priorityClassName)
 
@@ -147,16 +146,15 @@ func sendResponse(w http.ResponseWriter, admissionReviewResponse v1beta1.Admissi
 
 // buildJsonPatch builds a JSON patch to add the priorityClassName and annotation to a Deployment.
 func buildJsonPatch(priorityClassName string, deployment *v1.Deployment) ([]byte, error) {
-	now := time.Now()
 	annotations := deployment.ObjectMeta.Annotations
-	annotations["priorityClassWebhook/updated_at"] = now.Format("Mon Jan 2 15:04:05 AEST 2006")
+	annotations["updated_by"] = "priorityClassWebhook"
 	patch := []patchOperation{
-		patchOperation{
+		{
 			Op:    "add",
 			Path:  "/spec/template/spec/priorityClassName",
 			Value: priorityClassName,
 		},
-		patchOperation{
+		{
 			Op:    "replace",
 			Path:  "/metadata/annotations",
 			Value: annotations,
