@@ -19,25 +19,25 @@ func TestWebhookHandler(t *testing.T) {
 		expectedResponse string
 	}{
 		{
-			description:      "CREATE Deployment without a priorityClassName set",
+			description:      "CREATE Deployment priorityClassName not set",
 			request:          makeAdmissionRequest("Deployment", "CREATE", "foo/test-deployment", ""),
 			expectedStatus:   http.StatusOK,
 			expectedResponse: `{"response":{"uid":"f0b23c24-35f6-42a3-99e3-aa4ccab85f91","allowed":true,"patch":"W3sib3AiOiJhZGQiLCJwYXRoIjoiL3NwZWMvdGVtcGxhdGUvc3BlYy9wcmlvcml0eUNsYXNzTmFtZSIsInZhbHVlIjoiaGlnaC1wcmlvcml0eS1ub25wcmVlbXB0aW5nIn0seyJvcCI6InJlcGxhY2UiLCJwYXRoIjoiL21ldGFkYXRhL2Fubm90YXRpb25zIiwidmFsdWUiOnsic29tZV9hbm5vdGF0aW9uIjoic29tZV92YWx1ZSIsInVwZGF0ZWRfYnkiOiJwcmlvcml0eUNsYXNzV2ViaG9vayJ9fV0=","warnings":["Deployment foo/test-deployment does not have a PriorityClassName set.","Deployment foo/test-deployment was updated with PriorityClassName high-priority-nonpreempting."]}}`,
 		},
 		{
-			description:      `CREATE Deployment with priorityClassName already set to "some-priority-class"`,
+			description:      "CREATE Deployment priorityClassName set to different class",
 			request:          makeAdmissionRequest("Deployment", "CREATE", "foo/test-deployment", "some-priority-class"),
 			expectedStatus:   http.StatusOK,
 			expectedResponse: `{"response":{"uid":"f0b23c24-35f6-42a3-99e3-aa4ccab85f91","allowed":true,"patch":"W3sib3AiOiJhZGQiLCJwYXRoIjoiL3NwZWMvdGVtcGxhdGUvc3BlYy9wcmlvcml0eUNsYXNzTmFtZSIsInZhbHVlIjoiaGlnaC1wcmlvcml0eS1ub25wcmVlbXB0aW5nIn0seyJvcCI6InJlcGxhY2UiLCJwYXRoIjoiL21ldGFkYXRhL2Fubm90YXRpb25zIiwidmFsdWUiOnsic29tZV9hbm5vdGF0aW9uIjoic29tZV92YWx1ZSIsInVwZGF0ZWRfYnkiOiJwcmlvcml0eUNsYXNzV2ViaG9vayJ9fV0=","warnings":["Deployment foo/test-deployment has PriorityClassName already set to: some-priority-class","Deployment foo/test-deployment was updated with PriorityClassName high-priority-nonpreempting."]}}`,
 		},
 		{
-			description:      `UPDATE Deployment with priorityClassName already set to "high-priority-nonpreempting"`,
+			description:      "UPDATE Deployment priorityClassName set to target class",
 			request:          makeAdmissionRequest("Deployment", "UPDATE", "foo/test-deployment", "high-priority-nonpreempting"),
 			expectedStatus:   http.StatusOK,
 			expectedResponse: `{"response":{"uid":"f0b23c24-35f6-42a3-99e3-aa4ccab85f91","allowed":true}}`,
 		},
 		{
-			description:      `CREATE Deployment with priorityClassName already set to "high-priority-nonpreempting"`,
+			description:      "CREATE Deployment priorityClassName set to target class",
 			request:          makeAdmissionRequest("Deployment", "CREATE", "foo/test-deployment", "high-priority-nonpreempting"),
 			expectedStatus:   http.StatusOK,
 			expectedResponse: `{"response":{"uid":"f0b23c24-35f6-42a3-99e3-aa4ccab85f91","allowed":true}}`,
