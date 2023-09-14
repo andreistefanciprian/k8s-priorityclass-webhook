@@ -10,6 +10,7 @@ template:
 	helm template --namespace priorityclass-webhook priorityclass-webhook infra/priorityclass-webhook --create-namespace
 
 install: test-pre-deployment
+	sleep 5
 	helm upgrade --install priorityclass-webhook infra/priorityclass-webhook --namespace priorityclass-webhook --create-namespace
 
 uninstall:
@@ -39,3 +40,6 @@ check:
 
 logs:
 	kubectl logs -l app.kubernetes.io/name=priorityclass-webhook --namespace priorityclass-webhook -f
+
+unit-tests:
+	go test  ./... -v
