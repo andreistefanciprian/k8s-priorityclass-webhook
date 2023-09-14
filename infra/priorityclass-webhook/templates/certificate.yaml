@@ -2,6 +2,8 @@ apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
   name: {{ include "priorityclass-webhook.fullname" . }}
+  labels:
+    {{- include "priorityclass-webhook.labels" . | nindent 4 }}
 spec:
   selfSigned: {}
 ---
@@ -9,6 +11,8 @@ apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: {{ include "priorityclass-webhook.fullname" . }}
+  labels:
+    {{- include "priorityclass-webhook.labels" . | nindent 4 }}
   annotations:
     cert-manager.io/allow-direct-injection: "true"
 spec:

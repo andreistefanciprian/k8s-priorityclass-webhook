@@ -44,6 +44,7 @@ Build, Register, Deploy and Test the webhook using the provided tasks:
 
 1. Build and push the Docker image to the container registry:
    ```
+   make unit-tests
    make build
    ```
 

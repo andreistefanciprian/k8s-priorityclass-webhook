@@ -1,0 +1,161 @@
+helm template --namespace priorityclass-webhook priorityclass-webhook infra/priorityclass-webhook --create-namespace
+---
+# Source: priorityclass-webhook/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: priorityclass-webhook
+  labels:
+    app.kubernetes.io/name: priorityclass-webhook
+---
+# Source: priorityclass-webhook/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: priorityclass-webhook
+  labels:
+    app.kubernetes.io/name: priorityclass-webhook
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "watch", "list"]
+---
+# Source: priorityclass-webhook/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: priorityclass-webhook
+  labels:
+    app.kubernetes.io/name: priorityclass-webhook
+subjects:
+- kind: ServiceAccount
+  name: priorityclass-webhook
+  namespace: priorityclass-webhook
+roleRef:
+  kind: ClusterRole
+  name: priorityclass-webhook
+  apiGroup: rbac.authorization.k8s.io
+---
+# Source: priorityclass-webhook/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: priorityclass-webhook
+  labels:
+    app.kubernetes.io/name: priorityclass-webhook
+spec:
+  type: ClusterIP
+  ports:
+    - port: 443
+      targetPort: https
+      protocol: TCP
+      name: https
+  selector:
+    app.kubernetes.io/name: priorityclass-webhook
+    app.kubernetes.io/instance: priorityclass-webhook
+---
+# Source: priorityclass-webhook/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: priorityclass-webhook
+  labels:
+    app.kubernetes.io/name: priorityclass-webhook
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: priorityclass-webhook
+      app.kubernetes.io/instance: priorityclass-webhook
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: priorityclass-webhook
+        app.kubernetes.io/instance: priorityclass-webhook
+    spec:
+      serviceAccountName: priorityclass-webhook
+      securityContext:
+        {}
+      containers:
+        - name: priorityclass-webhook
+          securityContext:
+            {}
+          image: "andreistefanciprian/k8s-priorityclass-webhook:757446bd322828377f490adeef2ce514d0849d38-38"
+          imagePullPolicy: Always
+          ports:
+            - name: https
+              containerPort: 443
+              protocol: TCP
+          resources:
+            {}
+          volumeMounts:
+          - name: certs
+            mountPath: /etc/webhook/certs/
+            readOnly: true
+      volumes:
+      - name: certs
+        secret:
+          secretName: priorityclass-webhook
+---
+# Source: priorityclass-webhook/templates/certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: priorityclass-webhook
+  labels:
+    app.kubernetes.io/name: priorityclass-webhook
+  annotations:
+    cert-manager.io/allow-direct-injection: "true"
+spec:
+  dnsNames:
+  - priorityclass-webhook.priorityclass-webhook.svc
+  - priorityclass-webhook.priorityclass-webhook.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: priorityclass-webhook
+  secretName: priorityclass-webhook
+---
+# Source: priorityclass-webhook/templates/certificate.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: priorityclass-webhook
+  labels:
+    app.kubernetes.io/name: priorityclass-webhook
+spec:
+  selfSigned: {}
+---
+# Source: priorityclass-webhook/templates/webhook-configuration.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: priorityclass-webhook
+  labels:
+    app.kubernetes.io/name: priorityclass-webhook
+  annotations:
+    cert-manager.io/inject-ca-from: priorityclass-webhook/priorityclass-webhook # This is the cert-manager certificate name
+webhooks:
+  - name: priorityclass-webhook.priorityclass-webhook.svc.cluster.local
+    admissionReviewVersions:
+      - "v1beta1"
+    sideEffects: "None"
+    timeoutSeconds: 30
+    rules:
+      - operations: ["CREATE", "UPDATE"]
+        apiGroups: ["apps"]
+        apiVersions: ["v1"]
+        resources: ["deployments"]
+        scope: "Namespaced"
+    namespaceSelector:
+      matchExpressions:
+      - key: priorityclass-webhook
+        operator: In
+        values:
+        - enabled
+    objectSelector: {}
+    clientConfig:
+      service:
+        name: priorityclass-webhook
+        namespace: priorityclass-webhook
+        path: /mutate
+    failurePolicy: Ignore # Fail means that the API request will fail if the webhook fails. Ignore means that the API request will succeed even if the webhook fails.
