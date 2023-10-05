@@ -1,9 +1,9 @@
-# K8s Mutating Webhook that adds priorityClassName to Deployments
+# K8s Mutating Webhook that adds priorityClassName to DaemonSets
 
 ## Overview
 
 This project implements a Kubernetes MutatingAdmissionWebhook, serving as an [admission controller](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/) in the Kubernetes cluster. 
-The webhook intercepts Deployment CREATE and UPDATE requests and automatically adds a priorityClassName (eg: ```priorityClassName=high-priority-nonpreempting```) and annotation (eg: ```priorityClassWebhook/updated_at: Tue Aug 29 23:55:09 AEST 2023```).
+The webhook intercepts DaemonSet CREATE and UPDATE requests and automatically adds a priorityClassName (eg: ```priorityClassName=high-priority-nonpreempting```) and annotation (eg: ```priorityClassWebhook/updated_at: Tue Aug 29 23:55:09 AEST 2023```).
 
 ## Admission Controllers and webhooks in the K8s Architecture
 
@@ -33,7 +33,7 @@ These credentials are used by Github Actions to push the image to dockerhub.
    gh secret set DOCKERHUB_TOKEN -b"${TOKEN}"
    ```
 
-**Note**: Make sure the priorityclass you want to configure for deployments exists in the cluster.
+**Note**: Make sure the priorityclass you want to configure for DaemonSets exists in the cluster.
 
    ```
    kubectl apply -f https://raw.githubusercontent.com/andreistefanciprian/flux-demo/main/infra/priorityclasses/high-priority.yaml
@@ -54,37 +54,40 @@ Build, Register, Deploy and Test the webhook using the provided tasks:
    ```
 
 3. Deploy and Register webhook:
-   **Note**: Also build a deployment before registering the webhook so we can test the Deployment UPDATE operation later.
+   **Note**: Also builds a DaemonSet before registering the webhook so we can test the DaemonSet UPDATE operation later.
    ```
    make install
    ```
 
-4. Create test Deployments:
+4. Create test DaemonSets:
    ```
-   # create Pods and Deployments
+   # create Pods and DaemonSets
    make test
    ```
 
-5. Verify Deployments were updated by webhook:
+5. Verify DaemonSets were updated by webhook:
    ```
    # check webhook logs
    make logs
 
-   # Test 1 - Checking that preexisting Deployment gets mutated by webhook
-   kubectl patch deployment test-1 -n boo --type='json' -p='[{"op": "add", "path": "/metadata/annotations/patch", "value": "test"}]'
-   kubectl patch deployment test-1 -n boo --type='json' -p='[{"op": "remove", "path": "/spec/template/spec/priorityClassName"}]'
-   kubectl get deployment test-1 -n boo -o yaml --ignore-not-found | grep priority -A2 -B3
+   # Test 1 - Checking that preexisting DaemonSet gets mutated by webhook
+   kubectl patch daemonset test-1 -n boo --type='json' -p='[{"op": "add", "path": "/metadata/annotations/patch", "value": "test"}]'
+   kubectl patch daemonset test-1 -n boo --type='json' -p='[{"op": "remove", "path": "/spec/template/spec/priorityClassName"}]'
+   kubectl get daemonset test-1 -n boo -o yaml --ignore-not-found | grep priority -A2 -B3
 
-   # Test 2 - Checking that a Deployment without a priorityClassName gets mutated by webhook
-   kubectl get deployment/test-2 -n boo -o yaml | grep priority -A2 -B3
+   # Test 2 - Checking that a DaemonSet without a priorityClassName gets mutated by webhook
+   kubectl get daemonset/test-2 -n boo -o yaml | grep priority -A2 -B3
 
-   # Test 3 - Checking that a Deployment that has priorityClassName set gets mutated by webhook
-   kubectl get deployment/test-3 -n boo -o yaml | grep priority -A2 -B3
+   # Test 3 - Checking that a DaemonSet that has priorityClassName set gets mutated by webhook
+   kubectl get daemonset/test-3 -n boo -o yaml | grep priority -A2 -B3
 
-   # Test 4 - Checking that a Deployment that has priorityClassName already set to high-priority-nonpreempting doesn't get mutated by webhook
-   kubectl get deployment/test-4 -n boo -o yaml | grep priority -A2 -B3
+   # Test 4 - Checking that a DaemonSet that has priorityClassName already set to high-priority-nonpreempting doesn't get mutated by webhook
+   kubectl get daemonset/test-4 -n boo -o yaml | grep priority -A2 -B3
 
-   # Test 5 - Checking that a Pod without deployment doesn't get mutated by webhook
+   # Test 5 - Checking that a DaemonSet without match label doesn't get mutated by webhook
+   kubectl get daemonset/test-5 -n boo -o yaml | grep priority -A2 -B3
+
+   # Test 6 - Checking that a Pod without DaemonSet owner doesn't get mutated by webhook
    kubectl get pod/pod -n boo -o yaml | grep priority -A2 -B3
    ```
    
