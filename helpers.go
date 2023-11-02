@@ -72,20 +72,20 @@ func parseRequest(w http.ResponseWriter, r *http.Request) (*v1beta1.AdmissionRev
 // buildResponse builds the AdmissionReview response.
 func buildResponse(w http.ResponseWriter, req v1beta1.AdmissionReview) (*v1beta1.AdmissionReview, error) {
 
-	// Unmarshal the DaemonSet object from the AdmissionReview request into a DaemonSet struct.
-	ds := v1.DaemonSet{}
-	err := json.Unmarshal(req.Request.Object.Raw, &ds)
+	// Unmarshal the Deployment object from the AdmissionReview request into a Deployment struct.
+	deployment := v1.Deployment{}
+	err := json.Unmarshal(req.Request.Object.Raw, &deployment)
 	if err != nil {
 		return nil, fmt.Errorf("could not unmarshal pod on admission request: %s", err.Error())
 	}
 
-	// Construct DaemonSet name in the format: namespace/name
-	dsName := ds.GetNamespace() + "/" + ds.GetName()
+	// Construct Deployment name in the format: namespace/name
+	deploymentName := deployment.GetNamespace() + "/" + deployment.GetName()
 
-	log.Printf("New Admission Review Request is being processed: User: %v \t Operation: %v \t DaemonSet: %v \n",
+	log.Printf("New Admission Review Request is being processed: User: %v \t Operation: %v \t Deployment: %v \n",
 		req.Request.UserInfo.Username,
 		req.Request.Operation,
-		dsName,
+		deploymentName,
 	)
 	// Print string(body) when you want to see the AdmissionReview in the logs
 	// log.Printf("Admission Request Body: \n %v", string(body))
@@ -99,27 +99,27 @@ func buildResponse(w http.ResponseWriter, req v1beta1.AdmissionReview) (*v1beta1
 	}
 
 	//  Check if priorityClassName is already set
-	if ds.Spec.Template.Spec.PriorityClassName == priorityClassName {
-		log.Printf("DaemonSet %v has PriorityClassName already set to: %v", dsName, ds.Spec.Template.Spec.PriorityClassName)
+	if deployment.Spec.Template.Spec.PriorityClassName == priorityClassName {
+		log.Printf("Deployment %v has PriorityClassName already set to: %v", deploymentName, deployment.Spec.Template.Spec.PriorityClassName)
 	} else {
-		patchBytes, err := buildJsonPatch(priorityClassName, &ds)
+		patchBytes, err := buildJsonPatch(priorityClassName, &deployment)
 		if err != nil {
 			return nil, fmt.Errorf("could not build JSON patch: %s", err.Error())
 		}
-		// admissionReviewResponse.Response.AuditAnnotations = ds.ObjectMeta.Annotations // AuditAnnotations are added to the audit record when this admission response is added to the audit event.
+		// admissionReviewResponse.Response.AuditAnnotations = deployment.ObjectMeta.Annotations // AuditAnnotations are added to the audit record when this admission response is added to the audit event.
 		admissionReviewResponse.Response.Patch = patchBytes
-		patchMsg := fmt.Sprintf("DaemonSet %v was updated with PriorityClassName %v.", dsName, priorityClassName)
+		patchMsg := fmt.Sprintf("Deployment %v was updated with PriorityClassName %v.", deploymentName, priorityClassName)
 
-		if ds.Spec.Template.Spec.PriorityClassName == "" {
-			stdoutMsg := fmt.Sprintf("DaemonSet %v does not have a PriorityClassName set.", dsName)
+		if deployment.Spec.Template.Spec.PriorityClassName == "" {
+			stdoutMsg := fmt.Sprintf("Deployment %v does not have a PriorityClassName set.", deploymentName)
 			log.Println(stdoutMsg)
 			log.Println(patchMsg)
 			admissionReviewResponse.Response.Warnings = []string{stdoutMsg, patchMsg}
 
 		} else {
-			stdoutMsg := fmt.Sprintf("DaemonSet %v has PriorityClassName already set to: %v",
-				dsName,
-				ds.Spec.Template.Spec.PriorityClassName,
+			stdoutMsg := fmt.Sprintf("Deployment %v has PriorityClassName already set to: %v",
+				deploymentName,
+				deployment.Spec.Template.Spec.PriorityClassName,
 			)
 			log.Println(stdoutMsg)
 			log.Println(patchMsg)
@@ -144,9 +144,9 @@ func sendResponse(w http.ResponseWriter, admissionReviewResponse v1beta1.Admissi
 	w.Write(bytes)
 }
 
-// buildJsonPatch builds a JSON patch to add the priorityClassName and annotation to a DaemonSet.
-func buildJsonPatch(priorityClassName string, ds *v1.DaemonSet) ([]byte, error) {
-	annotations := ds.ObjectMeta.Annotations
+// buildJsonPatch builds a JSON patch to add the priorityClassName and annotation to a Deployment.
+func buildJsonPatch(priorityClassName string, deployment *v1.Deployment) ([]byte, error) {
+	annotations := deployment.ObjectMeta.Annotations
 	annotations["updated_by"] = "priorityClassWebhook"
 	patch := []patchOperation{
 		{

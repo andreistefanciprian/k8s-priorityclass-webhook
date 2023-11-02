@@ -19,11 +19,11 @@ uninstall:
 test: test-post-deployment
 
 test-post-deployment:
-	@echo Builds test DaemonSets after webhook registration...
+	@echo Builds test Deployments after webhook registration...
 	kustomize build infra/test-create | kubectl apply -f -
 
 test-pre-deployment:
-	@echo Builds test DaemonSet before webhook registration...
+	@echo Builds test Deployment before webhook registration...
 	kustomize build infra/test-update | kubectl apply -f -
 	
 clean-tests:
