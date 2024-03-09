@@ -76,7 +76,7 @@ func buildResponse(w http.ResponseWriter, req v1beta1.AdmissionReview) (*v1beta1
 	deployment := v1.Deployment{}
 	err := json.Unmarshal(req.Request.Object.Raw, &deployment)
 	if err != nil {
-		return nil, fmt.Errorf("could not unmarshal pod on admission request: %s", err.Error())
+		return nil, fmt.Errorf("could not unmarshal deployment on admission request: %s", err.Error())
 	}
 
 	// Construct Deployment name in the format: namespace/name
