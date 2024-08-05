@@ -1,3 +1,14 @@
+{{- if not .Values.GoogleCASClusterIssuer.enabled -}}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "priorityclass-webhook.fullname" . }}
+  labels:
+    {{- include "priorityclass-webhook.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+{{- end }}
+---
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -10,10 +21,16 @@ spec:
   dnsNames:
   - {{ include "priorityclass-webhook.fullname" . }}.{{ .Release.Namespace }}.svc
   - {{ include "priorityclass-webhook.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  {{- if .Values.GoogleCASClusterIssuer.enabled }}
   issuerRef:
     group: cas-issuer.jetstack.io
     kind: GoogleCASClusterIssuer
-    name: googlecasclusterissuer
+    name: {{ .Values.GoogleCASClusterIssuer.name }}
+  {{- else }}
+  issuerRef:
+    kind: Issuer
+    name: {{ include "priorityclass-webhook.fullname" . }}
+  {{- end }}
   privateKey:
     rotationPolicy: Always
   renewBefore: 1080h0m0s
